@@ -38,7 +38,7 @@ Run the following command in your terminal:
     ```sh
     python -m venv venv
 
-    .\venv\Scripts\activate
+    .\venv\Scripts\activate.bat
 
     python app.py
     ```
