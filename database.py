@@ -65,13 +65,13 @@ class BookRepository:
             if row:
                 try:
                     builder = BookBuilder()
-                    book = (builder.set_isbn(row["isbn"])
-                                            .set_title(row["title"])
-                                            .set_author(row["author"])
-                                            .set_genre(row["genre"])
-                                            .set_publisher(row["publisher"])
-                                            .set_published_year(row["published_year"])
-                                            .build())
+                    book = (builder.set_isbn(str(row["isbn"]))
+                                    .set_title(row["title"])
+                                    .set_author(row["author"])
+                                    .set_genre(row["genre"])
+                                    .set_publisher(row["publisher"])
+                                    .set_published_year(str(row["published_year"]))
+                                    .build())
                     return book
                 except (ValueError, AssertionError) as e:
                     messagebox.showerror("Error", f"Error when building Book object: {e}")  
