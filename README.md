@@ -31,7 +31,7 @@ The code is organized into the following files for a clean separation of concern
     * `delete_book.sql`: Query to delete a book.
     * `search_book.sql`: Query to search for a book by ISBN.
 
-## How to Run
+## How to Run on Windows
 
 Run the following command in your terminal:
 

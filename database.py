@@ -66,7 +66,7 @@ class BookRepository:
             conn.close()
 
     def edit(self, book: Book):
-        """Edita um livro existente a partir de um objeto Book."""
+        """Edits an existing book in the repository from a Book object."""
         conn = self._get_connection()
         try:
             cursor = conn.cursor()
