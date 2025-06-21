@@ -1,138 +1,146 @@
-import tkinter
-from tkinter import messagebox
-from book import BookBuilder
+# app.py
+
+import tkinter as tk
+from tkinter import ttk, messagebox
 from database import BookRepository
+from book import Book, BookBuilder
+from exceptions import ValidationError, BookNotFoundError, BookAlreadyExistsError
 
 class BookCatalogApp:
-    """
-    Application class for managing the book catalog.
-    """
+    """Main application class for the Books Catalog."""
     def __init__(self, root):
-        self.root = root
-        self.root.title("Book Catalog")
-        self.root.config(bg="#f0f0f0")
-
         self.repository = BookRepository()
-
+        self.root = root
+        self.root.title("Books Catalog")
+        self.root.geometry("600x400")
+        self.root.resizable(False, False)
         self._setup_ui()
 
     def _setup_ui(self):
-        """Creates and organizes all the widgets for the user interface."""
-        form_frame = tkinter.Frame(self.root, padx=20, pady=20)
-        form_frame.pack(padx=10, pady=10, fill="x")
+        """Sets up the user interface for the application."""
+        style = ttk.Style(self.root)
+        style.theme_use("clam")
 
-        form_fields = {
-            "ISBN:": "entry_isbn", "Title:": "entry_title", "Author:": "entry_author",
-            "Genre:": "entry_genre", "Publisher:": "entry_publisher", "Published Year:": "entry_published_year"
-        }
-        for i, (text, attr_name) in enumerate(form_fields.items()):
-            label = tkinter.Label(form_frame, text=text)
-            label.grid(row=i, column=0, sticky="w", pady=4)
-            entry = tkinter.Entry(form_frame, width=50)
-            entry.grid(row=i, column=1, pady=4, padx=5, sticky="we")
-            setattr(self, attr_name, entry)
+        main_frame = ttk.Frame(self.root, padding="10")
+        main_frame.pack(fill=tk.BOTH, expand=True)
 
-        button_frame = tkinter.Frame(self.root, padx=10, pady=10)
-        button_frame.pack(fill="x")
+        form_frame = ttk.LabelFrame(main_frame, text="Book Data", padding="10")
+        form_frame.pack(fill=tk.X, expand=True, pady=5)
 
-        button_search = tkinter.Button(button_frame, text="Search", command=self._search_book)
-        button_search.pack(side="left", padx=5)
-
-        self.button_add = tkinter.Button(button_frame, text="Add", command=self._add_book)
-        self.button_add.pack(side="left", padx=5)
+        labels = ["ISBN (13 dígitos):", "Title:", "Author:", "Genre:", "Publisher:", "Published_Year:"]
+        self.entries = {}
+        for i, label_text in enumerate(labels):
+            label = ttk.Label(form_frame, text=label_text)
+            label.grid(row=i, column=0, sticky=tk.W, padx=5, pady=5)
+            entry = ttk.Entry(form_frame, width=50)
+            entry.grid(row=i, column=1, sticky=tk.EW, padx=5, pady=5)
+            self.entries[label_text.split(' ')[0].lower()] = entry
         
-        self.button_edit = tkinter.Button(button_frame, text="Edit", command=self._edit_book)
-        self.button_edit.pack(side="left", padx=5)
+        form_frame.columnconfigure(1, weight=1)
 
-        self.button_delete = tkinter.Button(button_frame, text="Delete", command=self._delete_book)
-        self.button_delete.pack(side="left", padx=5)
+        button_frame = ttk.Frame(main_frame, padding="10")
+        button_frame.pack(fill=tk.X, expand=True)
 
-        button_clear = tkinter.Button(button_frame, text="Clear Form", command=self._clear_form)
-        button_clear.pack(side="right", padx=5)
+        buttons = [
+            ("Search", self._search_book), ("Add", self._add_book),
+            ("Edit", self._edit_book), ("Delete", self._delete_book),
+            ("Clear Form", self._clear_form)
+        ]
+        for i, (text, command) in enumerate(buttons):
+            button = ttk.Button(button_frame, text=text, command=command)
+            button.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
+
+    def _get_entry(self, key):
+        """Returns the entry widget for a given key."""
+        for k, v in self.entries.items():
+            if key in k:
+                return v
+        return None
 
     def _clear_form(self):
-        """Clears all input fields and resets the UI state."""
-        self.entry_isbn.config(state='normal')
-        self.entry_isbn.delete(0, 'end')
-        self.entry_title.delete(0, 'end')
-        self.entry_author.delete(0, 'end')
-        self.entry_genre.delete(0, 'end')
-        self.entry_publisher.delete(0, 'end')
-        self.entry_published_year.delete(0, 'end')
+        """Clears all form entries."""
+        for entry in self.entries.values():
+            entry.delete(0, tk.END)
 
-        self.entry_isbn.focus_set()
+    def _populate_form(self, book: Book):
+        """Populates the form with book data."""
+        self._clear_form()
+        self._get_entry('isbn').insert(0, book.isbn)
+        self._get_entry('title').insert(0, book.title)
+        self._get_entry('author').insert(0, book.author)
+        self._get_entry('genre').insert(0, book.genre)
+        self._get_entry('publisher').insert(0, book.publisher)
+        self._get_entry('published_year').insert(0, book.published_year)
 
+    def _get_builder_from_form(self):
+        """Creates a BookBuilder from the form entries."""
+        builder = BookBuilder()
+        builder.with_isbn(self._get_entry('isbn').get())
+        builder.with_title(self._get_entry('title').get())
+        builder.with_author(self._get_entry('author').get())
+        builder.with_genre(self._get_entry('genre').get())
+        builder.with_publisher(self._get_entry('publisher').get())
+        builder.with_published_year(self._get_entry('published_year').get())
+        return builder
+    
     def _search_book(self):
-        """Searches for a book by its ISBN."""
-        if not self.entry_isbn.get():
-            messagebox.showerror("Invalid Input", "Please enter an ISBN to search for.")
+        """Searches for a book by ISBN and populates the form with its data."""
+        isbn = self._get_entry('isbn').get()
+        if not isbn or not isbn.isdigit() or not len(isbn) == 13:
+            messagebox.showerror("Invalid Input", "Please enter a valid ISBN to search.")
             return
-
-        for entry in [self.entry_title, self.entry_author, self.entry_genre, self.entry_publisher, self.entry_published_year]:
-            entry.delete(0, 'end')
-
-        book = self.repository.search(self.entry_isbn.get())
         
-        if book:
-            self.entry_title.insert(0, book.title)
-            self.entry_author.insert(0, book.author)
-            self.entry_genre.insert(0, book.genre)
-            self.entry_publisher.insert(0, book.publisher)
-            self.entry_published_year.insert(0, str(book.published_year))
+        try:
+            book_obj = self.repository.search(int(isbn))
+            self._populate_form(book_obj)
+        except BookNotFoundError as e:
+            messagebox.showerror("Erro", str(e))
+        except Exception as e:
+            messagebox.showerror("Unexpected Error", f"An unexpected error occurred: {e}")
 
     def _add_book(self):
-        """Adds a new book to the catalog."""
+        """Adds a new book to the repository."""
         try:
-            builder = BookBuilder()
-
-            book = (builder.set_isbn(self.entry_isbn.get())
-                           .set_title(self.entry_title.get())
-                           .set_author(self.entry_author.get())
-                           .set_genre(self.entry_genre.get())
-                           .set_publisher(self.entry_publisher.get())
-                           .set_published_year(self.entry_published_year.get())
-                           .build())
-
-            if self.repository.add(book):
-                messagebox.showinfo("Success", "New book added successfully!")
-                self._clear_form()
-
-        except (ValueError, AssertionError) as e:
-            messagebox.showerror("Validation Error", str(e))
+            builder = self._get_builder_from_form()
+            book_obj = builder.build() # Cria o objeto
+            self.repository.add(book_obj) # Passa o objeto
+            messagebox.showinfo("Success", "Book added successfully!")
+            self._clear_form()
+        except (ValidationError, BookAlreadyExistsError) as e:
+            messagebox.showerror("Error Adding Book", str(e))
         except Exception as e:
-            messagebox.showerror(f"An unexpected error occurred: {e}")
+            messagebox.showerror("Unexpected Error", f"An unexpected error occurred: {e}")
 
     def _edit_book(self):
-        """Edits book details in the catalog."""
+        """Edits an existing book in the repository."""
         try:
-            builder = BookBuilder()
-
-            book = (builder.set_isbn(self.entry_isbn.get())
-                           .set_title(self.entry_title.get())
-                           .set_author(self.entry_author.get())
-                           .set_genre(self.entry_genre.get())
-                           .set_publisher(self.entry_publisher.get())
-                           .set_published_year(self.entry_published_year.get())
-                           .build())
-
-            if self.repository.edit(book):
-                messagebox.showinfo("Success", "Book edited successfully!")
-                self._clear_form()
-
-        except (ValueError, AssertionError) as e:
-            messagebox.showerror("Validation Error", str(e))
+            builder = self._get_builder_from_form()
+            book_obj = builder.build() # Cria o objeto
+            self.repository.edit(book_obj) # Passa o objeto
+            messagebox.showinfo("Success", "Book edited successfully!")
+            self._clear_form()
+        except (ValidationError, BookNotFoundError) as e:
+            messagebox.showerror("Error Editing Book", str(e))
         except Exception as e:
-            messagebox.showerror(f"An unexpected error occurred: {e}")
+            messagebox.showerror("Unexpected Error", f"An unexpected error occurred: {e}")
 
     def _delete_book(self):
-        """Deletes book from the catalog."""
-
-
-        if self.repository.delete(self.entry_isbn.get()):
+        """Deletes a book from the repository by ISBN."""
+        isbn = self._get_entry('isbn').get()
+        if not isbn or not isbn.isdigit() or not len(isbn) == 13:
+            messagebox.showerror("Invalid Input", "Please enter a valid ISBN to delete.")
+            return
+        
+        try:
+            self.repository.delete(int(isbn))
             messagebox.showinfo("Success", "Book deleted successfully!")
             self._clear_form()
+        except BookNotFoundError as e:
+            messagebox.showerror("Error Deleting Book", str(e))
+        except Exception as e:
+            messagebox.showerror("Unexpected Error", f"An unexpected error occurred: {e}")
 
 if __name__ == "__main__":
-    root = tkinter.Tk()
+    root = tk.Tk()
     app = BookCatalogApp(root)
     root.mainloop()

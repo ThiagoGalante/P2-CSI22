@@ -1,16 +1,15 @@
-from sqlalchemy import Column, Integer, String
-from tkinter import messagebox
+from dataclasses import dataclass
 
 class Book():
     """Represents a book in the repository."""
-    isbn = Column("isbn", Integer, unique=True, nullable=False)
-    title = Column("title", String, nullable=False)
-    author = Column("author", String, nullable=False)
-    genre = Column("genre", String, nullable=False)
-    publisher = Column("publisher", String, nullable=False)
-    published_year = Column("publish_year", Integer, nullable=False)
+    isbn: int
+    title: str
+    author: str
+    genre: str
+    publisher: str
+    published_year: int
 
-    def __init__(self, title: str, author: str, genre: str, isbn: str, publisher: str, published_year: int):
+    def __init__(self, title: str, author: str, genre: str, isbn: int, publisher: str, published_year: int):
         self.isbn = isbn
         self.title = title
         self.author = author
@@ -28,27 +27,27 @@ class BookBuilder():
         self._publisher = None
         self._published_year = None
 
-    def set_title(self, title: str):
+    def with_title(self, title: str):
         self._title = title
         return self
 
-    def set_author(self, author: str):
+    def with_author(self, author: str):
         self._author = author
         return self
 
-    def set_genre(self, genre: str):
+    def with_genre(self, genre: str):
         self._genre = genre
         return self
 
-    def set_isbn(self, isbn: str):
+    def with_isbn(self, isbn: str):
         self._isbn = isbn
         return self
 
-    def set_publisher(self, publisher: str):
+    def with_publisher(self, publisher: str):
         self._publisher = publisher
         return self
 
-    def set_published_year(self, published_year: str):
+    def with_published_year(self, published_year: str):
         self._published_year = published_year
         return self
 
