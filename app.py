@@ -1,102 +1,138 @@
 import tkinter
-from tkinter import ttk
+from tkinter import messagebox
+from book import BookBuilder
+from database import BookRepository
 
-def add_book(): # Create
-    title = entry_title.get()
-    author = entry_author.get()
-    genre = entry_genre.get()
-    isbn = entry_isbn.get()
-    publisher = entry_publisher.get()
-    publish_year = entry_publish_year.get()
+class BookCatalogApp:
+    """
+    Application class for managing the book catalog.
+    """
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Book Catalog")
+        self.root.config(bg="#f0f0f0")
 
-def search_book(): # Read
-    pass
+        self.repository = BookRepository()
 
-def edit_book(): # Update
-    pass
+        self._setup_ui()
 
-def delete_book(): # Delete
-    pass
+    def _setup_ui(self):
+        """Creates and organizes all the widgets for the user interface."""
+        form_frame = tkinter.Frame(self.root, padx=20, pady=20)
+        form_frame.pack(padx=10, pady=10, fill="x")
+
+        form_fields = {
+            "ISBN:": "entry_isbn", "Title:": "entry_title", "Author:": "entry_author",
+            "Genre:": "entry_genre", "Publisher:": "entry_publisher", "Published Year:": "entry_published_year"
+        }
+        for i, (text, attr_name) in enumerate(form_fields.items()):
+            label = tkinter.Label(form_frame, text=text)
+            label.grid(row=i, column=0, sticky="w", pady=4)
+            entry = tkinter.Entry(form_frame, width=50)
+            entry.grid(row=i, column=1, pady=4, padx=5, sticky="we")
+            setattr(self, attr_name, entry)
+
+        button_frame = tkinter.Frame(self.root, padx=10, pady=10)
+        button_frame.pack(fill="x")
+
+        button_search = tkinter.Button(button_frame, text="Search", command=self._search_book)
+        button_search.pack(side="left", padx=5)
+
+        self.button_add = tkinter.Button(button_frame, text="Add", command=self._add_book)
+        self.button_add.pack(side="left", padx=5)
+        
+        self.button_edit = tkinter.Button(button_frame, text="Edit", command=self._edit_book)
+        self.button_edit.pack(side="left", padx=5)
+
+        self.button_delete = tkinter.Button(button_frame, text="Delete", command=self._delete_book)
+        self.button_delete.pack(side="left", padx=5)
+
+        button_clear = tkinter.Button(button_frame, text="Clear Form", command=self._clear_form)
+        button_clear.pack(side="right", padx=5)
+
+    def _clear_form(self):
+        """Clears all input fields and resets the UI state."""
+        self.entry_isbn.config(state='normal')
+        self.entry_isbn.delete(0, 'end')
+        self.entry_title.delete(0, 'end')
+        self.entry_author.delete(0, 'end')
+        self.entry_genre.delete(0, 'end')
+        self.entry_publisher.delete(0, 'end')
+        self.entry_published_year.delete(0, 'end')
+
+        self.entry_isbn.focus_set()
+
+    def _search_book(self):
+        """Searches for a book by its ISBN."""
+        if not self.entry_isbn.get():
+            messagebox.showerror("Invalid Input", "Please enter an ISBN to search for.")
+            return
+
+        for entry in [self.entry_title, self.entry_author, self.entry_genre, self.entry_publisher, self.entry_published_year]:
+            entry.delete(0, 'end')
+
+        book = self.repository.search(self.entry_isbn.get())
+        
+        if book:
+            self.entry_title.insert(0, book.title)
+            self.entry_author.insert(0, book.author)
+            self.entry_genre.insert(0, book.genre)
+            self.entry_publisher.insert(0, book.publisher)
+            self.entry_published_year.insert(0, str(book.published_year))
+
+    def _add_book(self):
+        """Adds a new book to the catalog."""
+        try:
+            builder = BookBuilder()
+
+            book = (builder.set_isbn(self.entry_isbn.get())
+                           .set_title(self.entry_title.get())
+                           .set_author(self.entry_author.get())
+                           .set_genre(self.entry_genre.get())
+                           .set_publisher(self.entry_publisher.get())
+                           .set_published_year(self.entry_published_year.get())
+                           .build())
+
+            if self.repository.add(book):
+                messagebox.showinfo("Success", "New book added successfully!")
+                self._clear_form()
+
+        except (ValueError, AssertionError) as e:
+            messagebox.showerror("Validation Error", str(e))
+        except Exception as e:
+            messagebox.showerror(f"An unexpected error occurred: {e}")
+
+    def _edit_book(self):
+        """Edits book details in the catalog."""
+        try:
+            builder = BookBuilder()
+
+            book = (builder.set_isbn(self.entry_isbn.get())
+                           .set_title(self.entry_title.get())
+                           .set_author(self.entry_author.get())
+                           .set_genre(self.entry_genre.get())
+                           .set_publisher(self.entry_publisher.get())
+                           .set_published_year(self.entry_published_year.get())
+                           .build())
+
+            if self.repository.edit(book):
+                messagebox.showinfo("Success", "Book edited successfully!")
+                self._clear_form()
+
+        except (ValueError, AssertionError) as e:
+            messagebox.showerror("Validation Error", str(e))
+        except Exception as e:
+            messagebox.showerror(f"An unexpected error occurred: {e}")
+
+    def _delete_book(self):
+        """Deletes book from the catalog."""
 
 
+        if self.repository.delete(self.entry_isbn.get()):
+            messagebox.showinfo("Success", "Book deleted successfully!")
+            self._clear_form()
 
-app_interface = tkinter.Tk()
-app_interface.title("Book Catalog")
-app_interface.config(bg="#f0f0f0")
-
-frame_form = tkinter.Frame(app_interface, padx=20, pady=20)
-frame_form.pack(padx=10, pady=10, fill="x")
-
-label_isbn = tkinter.Label(frame_form, text="ISBN:")
-entry_isbn = tkinter.Entry(frame_form, width=20)
-
-label_title = tkinter.Label(frame_form, text="Title:")
-entry_title = tkinter.Entry(frame_form, width=40)
-
-label_author = tkinter.Label(frame_form, text="Author:")
-entry_author = tkinter.Entry(frame_form, width=40)
-
-label_genre = tkinter.Label(frame_form, text="Genre:")
-entry_genre = tkinter.Entry(frame_form, width=20)
-
-label_publisher = tkinter.Label(frame_form, text="Publisher:")
-entry_publisher = tkinter.Entry(frame_form, width=40)
-
-label_publish_year = tkinter.Label(frame_form, text="Publish Year:")
-entry_publish_year = tkinter.Entry(frame_form, width=20)
-
-label_isbn.grid(row=0, column=0, sticky="w", pady=2)
-entry_isbn.grid(row=0, column=1, pady=2, padx=5)
-
-label_title.grid(row=1, column=0, sticky="w", pady=2)
-entry_title.grid(row=1, column=1, pady=2, padx=5)
-
-label_author.grid(row=2, column=0, sticky="w", pady=2)
-entry_author.grid(row=2, column=1, pady=2, padx=5)
-
-label_genre.grid(row=3, column=0, sticky="w", pady=2)
-entry_genre.grid(row=3, column=1, pady=2, padx=5)
-
-label_publisher.grid(row=4, column=0, sticky="w", pady=2)
-entry_publisher.grid(row=4, column=1, pady=2, padx=5)
-
-label_publish_year.grid(row=5, column=0, sticky="w", pady=2)
-entry_publish_year.grid(row=5, column=1, pady=2, padx=5)
-
-frame_buttons = tkinter.Frame(app_interface, padx=10, pady=10)
-frame_buttons.pack(fill="x")
-
-add_button = tkinter.Button(frame_buttons, text="Add Book", command=add_book)
-search_button = tkinter.Button(frame_buttons, text="Search Book", command=search_book)
-edit_button = tkinter.Button(frame_buttons, text="Edit Book", command=edit_book)
-delete_button = tkinter.Button(frame_buttons, text="Delete Book", command=delete_book)
-
-add_button.pack(side="left", padx=5)
-search_button.pack(side="left", padx=5)
-edit_button.pack(side="left", padx=5)
-delete_button.pack(side="left", padx=5)
-
-frame_list = tkinter.Frame(app_interface, padx=10, pady=10)
-frame_list.pack(fill="both", expand=True)
-columns = ("ISBN", "Title", "Author", "Genre", "Publisher", "Publish Year")
-book_list = ttk.Treeview(app_interface, columns=columns, show="headings")
-
-book_list.heading("ISBN", text="ISBN")
-book_list.heading("Title", text="Title")
-book_list.heading("Author", text="Author")
-book_list.heading("Genre", text="Genre")
-book_list.heading("Publisher", text="Publisher")
-book_list.heading("Publish Year", text="Publish Year")
-
-book_list.column("ISBN", width=50)
-book_list.column("Title", width=150)
-book_list.column("Author", width=100)
-book_list.column("Genre", width=80)
-book_list.column("Publisher", width=100)
-book_list.column("Publish Year", width=80)
-
-
-
-book_list.pack(fill="both", expand=True)
-
-app_interface.mainloop()
+if __name__ == "__main__":
+    root = tkinter.Tk()
+    app = BookCatalogApp(root)
+    root.mainloop()
